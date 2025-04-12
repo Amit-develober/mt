@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Math Game for Kids</title>
+  <style>
+    body {
+      font-family: 'Comic Sans MS', sans-serif;
+      text-align: center;
+      color: #fff;
+      padding: 50px;
+      transition: background 0.3s, color 0.3s;
+    }
+    .light-mode {
+      background: linear-gradient(to right, #8EC5FC, #E0C3FC);
+      color: #fff;
+    }
+    .dark-mode {
+      background: #333;
+      color: #ccc;
+    }
+    .game-box {
+      background: #fff;
+      color: #333;
+      border-radius: 20px;
+      padding: 30px;
+      width: 90%;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+      transition: background 0.3s, color 0.3s;
+    }
+    .dark-mode .game-box {
+      background: #444;
+      color: #fff;
+    }
+    h1 {
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    select, input, button {
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+    .question {
+      font-size: 24px;
+      margin: 20px 0;
+    }
+    .score, .level, .target {
+      font-size: 20px;
+      margin: 10px 0;
+    }
+    .correct {
+      color: green;
+      font-weight: bold;
+    }
+    .wrong {
+      color: red;
+      font-weight: bold;
+    }
+    .leaderboard {
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    #winner-screen {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      font-size: 28px;
+      padding-top: 20%;
+    }
+  </style>
+</head>
+<body class="light-mode">
+
+  <h1>🎯 Math Master Game</h1>
+  <div>
+    <label for="difficulty">Select Difficulty:</label>
+    <select id="difficulty" onchange="resetGame()">
+      <option value="easy">Easy 🟢</option>
+      <option value="normal" selected>Normal 🟡</option>
+      <option value="hard">Hard 🔴</option>
+      <option value="impossible">Impossible 💀</option>
+    </select>
+  </div>
+
+  <div>
+    <button onclick="toggleDarkMode()">🌙 Toggle Dark Mode</button>
+  </div>
+
+  <div class="game-box">
+    <div class="score">Score: <span id="score">0</span></div>
+    <div class="level">Level: <span id="level">1</span></div>
+    <div class="target">Target: <span id="target">100</span></div>
+
+    <!-- Top Scores (No label shown) -->
+    <div class="leaderboard">
+      <ol id="topScoresList"></ol>
+    </div>
+
+    <div class="question" id="question">Loading...</div>
+    <input type="number" id="answer" placeholder="Your answer"/>
+    <div id="feedback"></div>
+    <button onclick="checkAnswer()">Submit</button>
+    <br/>
+    <button onclick="resetGame()">🔄 Reset Game</button>
+  </div>
+
+  <!-- WINNER SCREEN -->
+  <div id="winner-screen">
+    🎉 You completed all levels!<br/>
+    Final Score: <span id="final-score"></span><br/><br/>
+    <button onclick="resetGame()">Play Again</button>
+  </div>
+
+  <!-- Sound Effects -->
+  <audio id="correct-sound" src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_4bff1f3e94.mp3?filename=correct-2-46134.mp3"></audio>
+  <audio id="wrong-sound" src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_f703683fc1.mp3?filename=wrong-47985.mp3"></audio>
+  <audio id="levelup-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_d9ac651b6f.mp3?filename=game-level-complete-143022.mp3"></audio>
+
+  <script>
+    let level = 1;
+    let score = 0;
+    let target = 100;
+    let correctAnswer = 0;
+    const MAX_LEVEL = 5;
+
+    const correctSound = document.getElementById("correct-sound");
+    const wrongSound = document.getElementById("wrong-sound");
+    const levelupSound = document.getElementById("levelup-sound");
+
+    let topScores = JSON.parse(localStorage.getItem("mathTopScores") || "[]");
+    updateTopScoresUI();
+
+    function getDifficultyRange() {
+      const difficulty = document.getElementById("difficulty").value;
+      switch (difficulty) {
+        case 'easy': return 10;
+        case 'normal': return 20;
+        case 'hard': return 50;
+        case 'impossible': return 100;
+      }
+    }
+
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function generateQuestion() {
+      const operators = ['+', '-', '×', '÷'];
+      const op = operators[getRandomInt(0, operators.length - 1)];
+      const range = getDifficultyRange() * level;
+
+      let num1, num2;
+      switch (op) {
+        case '+':
+          num1 = getRandomInt(1, range);
+          num2 = getRandomInt(1, range);
+          correctAnswer = num1 + num2;
+          break;
+        case '-':
+          num1 = getRandomInt(1, range);
+          num2 = getRandomInt(1, num1);
+          correctAnswer = num1 - num2;
+          break;
+        case '×':
+          num1 = getRandomInt(2, range / 2);
+          num2 = getRandomInt(2, range / 2);
+          correctAnswer = num1 * num2;
+          break;
+        case '÷':
+          num2 = getRandomInt(2, range / 2);
+          correctAnswer = getRandomInt(2, range / 2);
+          num1 = num2 * correctAnswer;
+          break;
+      }
+
+      document.getElementById('question').textContent = `${num1} ${op} ${num2} = ?`;
+    }
+
+    function checkAnswer() {
+      const userAnswer = parseInt(document.getElementById('answer').value);
+      const feedback = document.getElementById('feedback');
+
+      if (userAnswer === correctAnswer) {
+        score += 10;
+        feedback.textContent = "✅ Correct!";
+        feedback.className = "correct";
+        correctSound.play();
+
+        if (score >= target) {
+          level++;
+          target += 50;
+          levelupSound.play();
+
+          if (level > MAX_LEVEL) {
+            showWinnerScreen();
+            return;
+          }
+
+          alert(`🎉 Level Up! You reached Level ${level}`);
+        }
+      } else {
+        feedback.textContent = "❌ Try again!";
+        feedback.className = "wrong";
+        wrongSound.play();
+      }
+
+      updateUI();
+      generateQuestion();
+    }
+
+    function showWinnerScreen() {
+      saveTopScore(score);
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('winner-screen').style.display = 'block';
+    }
+
+    function saveTopScore(newScore) {
+      topScores.push(newScore);
+      topScores.sort((a, b) => b - a);
+      topScores = topScores.slice(0, 3);
+      localStorage.setItem("mathTopScores", JSON.stringify(topScores));
+      updateTopScoresUI();
+    }
+
+    function updateTopScoresUI() {
+      const list = document.getElementById("topScoresList");
+      list.innerHTML = "";
+      topScores.forEach((s) => {
+        const li = document.createElement("li");
+        li.textContent = `${s} pts`;
+        list.appendChild(li);
+      });
+    }
+
+    function resetGame() {
+      score = 0;
+      level = 1;
+      target = 100;
+      document.getElementById('winner-screen').style.display = 'none';
+      updateUI();
+      generateQuestion();
+    }
+
+    function updateUI() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('level').textContent = level;
+      document.getElementById('target').textContent = target;
+      document.getElementById('answer').value = "";
+    }
+
+    function toggleDarkMode() {
+      const body = document.body;
+      body.classList.toggle('dark-mode');
+      body.classList.toggle('light-mode');
+    }
+
+    generateQuestion();
+  </script>
+</body>
+</html>
