@@ -38,6 +38,9 @@
     h1 {
       color: #fff;
       margin-bottom: 10px;
+      -webkit-text-stroke: 2px #333;
+      font-size: 2.5em;
+      text-shadow: 3px 3px 0 #333;
     }
     select, input, button {
       font-size: 16px;
@@ -98,27 +101,24 @@
     <div class="level">Level: <span id="level">1</span></div>
     <div class="target">Target: <span id="target">100</span></div>
 
-    <!-- Top Scores (No label shown) -->
     <div class="leaderboard">
       <ol id="topScoresList"></ol>
     </div>
 
     <div class="question" id="question">Loading...</div>
-    <input type="number" id="answer" placeholder="Your answer"/>
+    <input type="number" id="answer" placeholder="Your answer" step="0.01"/>
     <div id="feedback"></div>
     <button onclick="checkAnswer()">Submit</button>
     <br/>
     <button onclick="resetGame()">🔄 Reset Game</button>
   </div>
 
-  <!-- WINNER SCREEN -->
   <div id="winner-screen">
-    🎉 You completed all levels!<br/>
+    🎉 You reached a high score!<br/>
     Final Score: <span id="final-score"></span><br/><br/>
     <button onclick="resetGame()">Play Again</button>
   </div>
 
-  <!-- Sound Effects -->
   <audio id="correct-sound" src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_4bff1f3e94.mp3?filename=correct-2-46134.mp3"></audio>
   <audio id="wrong-sound" src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_f703683fc1.mp3?filename=wrong-47985.mp3"></audio>
   <audio id="levelup-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_d9ac651b6f.mp3?filename=game-level-complete-143022.mp3"></audio>
@@ -128,7 +128,6 @@
     let score = 0;
     let target = 100;
     let correctAnswer = 0;
-    const MAX_LEVEL = 5;
 
     const correctSound = document.getElementById("correct-sound");
     const wrongSound = document.getElementById("wrong-sound");
@@ -147,47 +146,135 @@
       }
     }
 
+    function gcd(a, b) {
+      a = Math.abs(a);
+      b = Math.abs(b);
+      while (b) {
+        let t = b;
+        b = a % b;
+        a = t;
+      }
+      return a;
+    }
+
+    function simplifyFraction(numerator, denominator) {
+      const divisor = gcd(numerator, denominator);
+      return [numerator / divisor, denominator / divisor];
+    }
+
+    function generateFraction() {
+      const numerator = getRandomInt(1, 10);
+      const denominator = getRandomInt(2, 10);
+      return simplifyFraction(numerator, denominator);
+    }
+
     function getRandomInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
     function generateQuestion() {
-      const operators = ['+', '-', '×', '÷'];
-      const op = operators[getRandomInt(0, operators.length - 1)];
+      const difficulty = document.getElementById("difficulty").value;
+      const isAdvancedMode = difficulty === 'hard' || difficulty === 'impossible';
+      const algebraicProb = difficulty === 'easy' ? 0.1 : difficulty === 'normal' ? 0.2 : difficulty === 'hard' ? 0.4 : 0.7; // 70% for impossible
+      const useAlgebraic = Math.random() < algebraicProb;
       const range = getDifficultyRange() * level;
 
-      let num1, num2;
+      if (useAlgebraic) {
+        const variable = ['x', 'y'][getRandomInt(0, 1)]; // Use x or y
+        const operations = ['+', '-', '×', '÷'];
+        const op = operations[getRandomInt(0, operations.length - 1)];
+        let result, operand, answer, equation;
+
+        if (op === '÷') {
+          // For division: x ÷ operand = result, so x = result * operand
+          result = getRandomInt(1, Math.floor(range / 2));
+          operand = getRandomInt(1, Math.floor(range / 2));
+          answer = result * operand;
+          equation = `If ${variable} ÷ ${operand} = ${result}, find ${variable}`;
+        } else {
+          // For other operations: set result and operand, compute x
+          result = getRandomInt(1, range);
+          operand = getRandomInt(1, Math.floor(range / 2));
+          switch (op) {
+            case '+':
+              answer = result - operand;
+              equation = `If ${variable} + ${operand} = ${result}, find ${variable}`;
+              break;
+            case '-':
+              answer = result + operand;
+              equation = `If ${variable} - ${operand} = ${result}, find ${variable}`;
+              break;
+            case '×':
+              answer = result / operand;
+              equation = `If ${variable} × ${operand} = ${result}, find ${variable}`;
+              break;
+          }
+        }
+
+        document.getElementById('question').textContent = equation;
+        correctAnswer = Math.round(answer * 100) / 100;
+        return;
+      }
+
+      const isFractionMode = isAdvancedMode;
+      const operators = isFractionMode ? ['+', '-', '×'] : ['+', '-', '×', '÷'];
+      const op = operators[getRandomInt(0, operators.length - 1)];
+
+      let num1, num2, display1, display2;
+      const isFirstFraction = isFractionMode && Math.random() < 0.5;
+      const isSecondFraction = isFractionMode && Math.random() < 0.5;
+
+      if (isFirstFraction) {
+        const [n1, d1] = generateFraction();
+        num1 = n1 / d1;
+        display1 = `${n1}/${d1}`;
+      } else {
+        num1 = getRandomInt(1, range);
+        display1 = num1.toString();
+      }
+
+      if (isSecondFraction) {
+        const [n2, d2] = generateFraction();
+        num2 = n2 / d2;
+        display2 = `${n2}/${d2}`;
+      } else {
+        if (op === '-') {
+          num2 = getRandomInt(1, Math.floor(num1));
+        } else if (op === '÷') {
+          num2 = getRandomInt(2, range / 2);
+          const temp = num1;
+          num1 = num1 * num2;
+          display1 = num1.toString();
+        } else {
+          num2 = getRandomInt(1, range);
+        }
+        display2 = num2.toString();
+      }
+
       switch (op) {
         case '+':
-          num1 = getRandomInt(1, range);
-          num2 = getRandomInt(1, range);
           correctAnswer = num1 + num2;
           break;
         case '-':
-          num1 = getRandomInt(1, range);
-          num2 = getRandomInt(1, num1);
           correctAnswer = num1 - num2;
           break;
         case '×':
-          num1 = getRandomInt(2, range / 2);
-          num2 = getRandomInt(2, range / 2);
           correctAnswer = num1 * num2;
           break;
         case '÷':
-          num2 = getRandomInt(2, range / 2);
-          correctAnswer = getRandomInt(2, range / 2);
-          num1 = num2 * correctAnswer;
+          correctAnswer = num1 / num2;
           break;
       }
 
-      document.getElementById('question').textContent = `${num1} ${op} ${num2} = ?`;
+      document.getElementById('question').textContent = `${display1} ${op} ${display2} = ?`;
+      correctAnswer = Math.round(correctAnswer * 100) / 100;
     }
 
     function checkAnswer() {
-      const userAnswer = parseInt(document.getElementById('answer').value);
+      const userAnswer = parseFloat(document.getElementById('answer').value);
       const feedback = document.getElementById('feedback');
 
-      if (userAnswer === correctAnswer) {
+      if (Math.abs(userAnswer - correctAnswer) < 0.01) { // Allow small floating-point errors
         score += 10;
         feedback.textContent = "✅ Correct!";
         feedback.className = "correct";
@@ -197,12 +284,6 @@
           level++;
           target += 50;
           levelupSound.play();
-
-          if (level > MAX_LEVEL) {
-            showWinnerScreen();
-            return;
-          }
-
           alert(`🎉 Level Up! You reached Level ${level}`);
         }
       } else {
@@ -253,6 +334,7 @@
       document.getElementById('level').textContent = level;
       document.getElementById('target').textContent = target;
       document.getElementById('answer').value = "";
+      document.getElementById('feedback').textContent = "";
     }
 
     function toggleDarkMode() {
