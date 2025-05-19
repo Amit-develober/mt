@@ -11,6 +11,7 @@
       color: #fff;
       padding: 50px;
       transition: background 0.3s, color 0.3s;
+      font-weight: bold;
     }
     .light-mode {
       background: linear-gradient(to right, #8EC5FC, #E0C3FC);
@@ -47,14 +48,17 @@
       padding: 10px;
       border-radius: 10px;
       margin: 10px 0;
+      font-weight: bold;
     }
     .question {
       font-size: 24px;
       margin: 20px 0;
+      font-weight: bold;
     }
     .score, .level, .target {
       font-size: 20px;
       margin: 10px 0;
+      font-weight: bold;
     }
     .correct {
       color: green;
@@ -67,6 +71,7 @@
     .leaderboard {
       font-size: 16px;
       margin-top: 10px;
+      font-weight: bold;
     }
     #winner-screen {
       display: none;
@@ -76,6 +81,31 @@
       color: white;
       font-size: 28px;
       padding-top: 20%;
+    }
+    .popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px;
+      border-radius: 10px;
+      font-size: 24px;
+      color: white;
+      animation: fadeInOut 1.5s ease-in-out;
+      z-index: 1000;
+    }
+    .popup.correct {
+      background: rgba(40, 167, 69, 0.9);
+    }
+    .popup.wrong {
+      background: rgba(220, 53, 69, 0.9);
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
     }
   </style>
 </head>
@@ -118,6 +148,8 @@
     Final Score: <span id="final-score"></span><br/><br/>
     <button onclick="resetGame()">Play Again</button>
   </div>
+
+  <div id="feedback-popup" class="popup"></div>
 
   <audio id="correct-sound" src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_4bff1f3e94.mp3?filename=correct-2-46134.mp3"></audio>
   <audio id="wrong-sound" src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_f703683fc1.mp3?filename=wrong-47985.mp3"></audio>
@@ -270,6 +302,17 @@
       correctAnswer = Math.round(correctAnswer * 100) / 100;
     }
 
+    function showPopup(message, isCorrect) {
+      const popup = document.getElementById('feedback-popup');
+      popup.textContent = message;
+      popup.className = `popup ${isCorrect ? 'correct' : 'wrong'}`;
+      popup.style.display = 'block';
+      
+      setTimeout(() => {
+        popup.style.display = 'none';
+      }, 1500);
+    }
+
     function checkAnswer() {
       const userAnswer = parseFloat(document.getElementById('answer').value);
       const feedback = document.getElementById('feedback');
@@ -279,21 +322,23 @@
         feedback.textContent = "✅ Correct!";
         feedback.className = "correct";
         correctSound.play();
+        showPopup('🎉 Correct!', true);
 
         if (score >= target) {
           level++;
           target += 50;
           levelupSound.play();
-          alert(`🎉 Level Up! You reached Level ${level}`);
+          showPopup(`🎯 Level Up! Level ${level}`, true);
         }
+        generateQuestion(); // Only generate new question when answer is correct
       } else {
         feedback.textContent = "❌ Try again!";
         feedback.className = "wrong";
         wrongSound.play();
+        showPopup('❌ Incorrect! Try again', false);
       }
 
       updateUI();
-      generateQuestion();
     }
 
     function showWinnerScreen() {
@@ -326,7 +371,6 @@
       target = 100;
       document.getElementById('winner-screen').style.display = 'none';
       updateUI();
-      generateQuestion();
     }
 
     function updateUI() {
